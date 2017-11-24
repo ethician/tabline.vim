@@ -15,31 +15,67 @@ if (exists("g:loaded_tabline_vim") && g:loaded_tabline_vim) || &cp
 endif
 let g:loaded_tabline_vim = 1
 
-function! Tabline()
-  let s = ''
-  for i in range(tabpagenr('$'))
+function! CreateTabline(first_tabpagenr)
+  let e = '['
+  let s = '['
+  let last_tabpagenr = tabpagenr('$') - 1
+  if a:first_tabpagenr > 0
+    let s = '<'
+    let e = '<'
+  endif
+  for i in range(a:first_tabpagenr, last_tabpagenr)
     let tab = i + 1
     let winnr = tabpagewinnr(tab)
     let buflist = tabpagebuflist(tab)
     let bufnr = buflist[winnr - 1]
     let bufname = bufname(bufnr)
     let bufmodified = getbufvar(bufnr, "&mod")
+    let p = ''
 
-    let s .= '%' . tab . 'T'
-    let s .= (tab == tabpagenr() ? '%#TabLineSel#' : '%#TabLine#')
-    let s .= ' ' . tab .':'
-    let s .= (bufname != '' ? '['. fnamemodify(bufname, ':t') . '] ' : '[No Name] ')
-
+    let p .= '%' . tab . 'T'
+    let p .= (tab == tabpagenr() ? '%#TabLineSel#' : '%#TabLine#')
+    "let p .= ' ' . tab .':'
+    let p .= ' ' . tab 
+    let e .= ' ' . tab 
     if bufmodified
-      let s .= '[+] '
+      let p .= '+'
+      let e .= '+'
+    else
+      let p .= ' '
+      let e .= ' '
     endif
+    "let p .= (bufname != '' ? fnamemodify(bufname, ':t') : '[No Name]')
+    if bufname == ''
+      let p .= '[NoName]'
+      let e .= '[NoName]'
+    else
+      if getbufvar(bufnr, "&buftype" ) == 'help'
+        let p .= '[H]' . fnamemodify(bufname, ':t:s/.txt$//' )
+        let e .= '[H]' . fnamemodify(bufname, ':t:s/.txt$//' )
+      elseif getbufvar(bufnr, "&buftype" ) == 'quickfix'
+        let p .= '[Q]'
+        let e .= '[Q]'
+      else
+        let p .= pathshorten(bufname)
+        let e .= pathshorten(bufname)
+      endif
+    endif
+    let p .= ' '
+    let e .= ' 00'
+    if strlen(e) >= &columns
+      if i > tabpagenr()
+        let s .= '%#TabLineFill#%=' . (tabpagenr('$') - i) . '>'
+        return s
+      endif
+      return CreateTabline(a:first_tabpagenr + 1)
+    endif
+    let s .= p
   endfor
-
-  let s .= '%#TabLineFill#'
-  if (exists("g:tablineclosebutton"))
-    let s .= '%=%999XX'
-  endif
+  let s .= '%#TabLineFill#%=]'
+  "if (exists("g:tablineclosebutton"))
+    "let s .= '%=%999XX'
+  "endif
   return s
 endfunction
-set tabline=%!Tabline()
 
+set tabline=%!CreateTabline(0)
